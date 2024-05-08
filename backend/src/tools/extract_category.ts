@@ -14,7 +14,7 @@ import { StructuredOutputParser } from "langchain/output_parsers";
  */
 export class ExtractHighLevelCategories extends StructuredTool {
   schema = z.object({
-    categories: z.array(z.enum(Object.keys(HIGH_LEVEL_CATEGORY_MAPPING) as [string, ...string[]])).describe("Represents the high level categories which best represent the user query.")
+    highLevelCategories: z.array(z.enum(Object.keys(HIGH_LEVEL_CATEGORY_MAPPING) as [string, ...string[]])).describe("Represents the high level categories which best represent the user query.")
   })
 
   name = "ExtractHighLevelCategories";
@@ -22,7 +22,7 @@ export class ExtractHighLevelCategories extends StructuredTool {
   description = "Extracts the high level category which best represent the user query.";
 
   async _call(input: z.infer<typeof this.schema>): Promise<string> {
-    const categoriesMapped = input.categories.map(category => HIGH_LEVEL_CATEGORY_MAPPING[category as keyof typeof HIGH_LEVEL_CATEGORY_MAPPING]).flat()
+    const categoriesMapped = input.highLevelCategories.map(category => HIGH_LEVEL_CATEGORY_MAPPING[category as keyof typeof HIGH_LEVEL_CATEGORY_MAPPING]).flat()
     return JSON.stringify(categoriesMapped)
   }
 }
@@ -52,16 +52,18 @@ export async function extractCategory(state: GraphState): Promise<Partial<GraphS
 
   const tool = new ExtractHighLevelCategories()
 
-  const parser = StructuredOutputParser.fromZodSchema(tool.schema);
+  const modelWithTools = llm.withStructuredOutput(tool)
 
-  const modelWithTools = llm .withStructuredOutput(tool.schema)
-
-  const chain = prompt.pipe(modelWithTools).pipe(tool).pipe(parser)
+  const chain = prompt.pipe(modelWithTools).pipe(tool)
 
   const response = await chain.invoke({
     query,
-    highLevelCategories: Object.entries(HIGH_LEVEL_CATEGORY_MAPPING).map(([key, values]) => `High level category: ${key}, Categories: ${values.join(', ')}`).join(`\n\n`)
+    highLevelCategories: Object.entries(HIGH_LEVEL_CATEGORY_MAPPING).map(([key, values]) => `High level category: ${key} \nCategories: ${values.join(', ')}`).join(`\n\n`)
   })
 
-  return response
+  const categories: string[] = JSON.parse(response)
+
+  return {
+    categories
+  }
 }

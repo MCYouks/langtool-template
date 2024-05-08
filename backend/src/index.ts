@@ -73,9 +73,9 @@ const graphChannels = {
 /**
  * @param {GraphState} state
  */
-const verifyParams = (): string => {
-  throw new Error("verifyParams not implemented");
-};
+const verifyParams = (state: GraphState): GraphNode.HumanInTheLoop | GraphNode.ExecuteFetchRequest => {
+  throw new Error("Not implemented: " + state);
+}
 
 
 enum GraphNode {
@@ -136,9 +136,9 @@ function createGraph() {
    * Define conditional edges
    */
 
-  graph.addConditionalEdges(GraphNode.ExtractApiParamsFromQuery, (state: GraphState): GraphNode.HumanInTheLoop | GraphNode.ExecuteFetchRequest => {
-    throw new Error("Not implemented: " + state);
-  })
+  graph.addConditionalEdges(GraphNode.ExtractApiParamsFromQuery, verifyParams)
+
+  graph.addConditionalEdges(GraphNode.HumanInTheLoop, verifyParams)
 
   /**
    * Define entry and finish point
