@@ -1,10 +1,14 @@
 // Define graph here
 
+import fs from "fs"
 import { StateGraph } from "@langchain/langgraph";
 import { ChatOpenAI } from "@langchain/openai";
 
 import { DatasetSchema } from "types.js";
+import { TRIMMED_CORPUS_PATH } from "constants.js";
+
 import { extractCategory } from "tools/extract_category.js";
+import { selectApi } from "tools/select_api.js";
 
 export type GraphState = {
   /**
@@ -77,6 +81,20 @@ const verifyParams = (state: GraphState): GraphNode.HumanInTheLoop | GraphNode.E
   throw new Error("Not implemented: " + state);
 }
 
+const getApis = (state: GraphState): Partial<GraphState> => {
+  const { categories } = state;
+
+  if (!categories?.length) {
+    throw new Error(`No categories provided to ${GraphNode.GetApisInCategory} node.`)
+  }
+
+  const allData: DatasetSchema[] = JSON.parse(fs.readFileSync(TRIMMED_CORPUS_PATH, "utf8"))
+
+  const apis = categories.flatMap(category => allData.filter(data => data.category_name === category))
+
+  return { apis }
+}
+
 
 enum GraphNode {
   ExtractCategory = "extract_category",
@@ -102,13 +120,9 @@ function createGraph() {
 
   graph.addNode(GraphNode.ExtractCategory, extractCategory)
 
-  graph.addNode(GraphNode.GetApisInCategory, (state: GraphState) => {
-    console.log("Not implemented", state)
-  })
+  graph.addNode(GraphNode.GetApisInCategory, getApis)
 
-  graph.addNode(GraphNode.SelectApi, (state: GraphState) => {
-    console.log("Not implemented", state)
-  })
+  graph.addNode(GraphNode.SelectApi, selectApi)
 
   graph.addNode(GraphNode.ExtractApiParamsFromQuery, (state: GraphState) => {
     console.log("Not implemented", state)

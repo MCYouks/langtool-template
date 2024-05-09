@@ -52,9 +52,9 @@ export async function extractCategory(state: GraphState): Promise<Partial<GraphS
 
   const tool = new ExtractHighLevelCategories()
 
-  const modelWithTools = llm.withStructuredOutput(tool)
+  const modelWithStructuredOutput = llm.withStructuredOutput(tool.schema)
 
-  const chain = prompt.pipe(modelWithTools).pipe(tool)
+  const chain = prompt.pipe(modelWithStructuredOutput).pipe(tool)
 
   const response = await chain.invoke({
     query,

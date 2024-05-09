@@ -1,7 +1,7 @@
 export const CORPUS_PATH =
-  "/Users/bracesproul/code/lang-chain-ai/other/anytool-private/data/corpus.json";
+  "/Users/andreasblondeau/Documents/GitHub.nosync/AI/langtool-template/data/corpus.json";
 export const TRIMMED_CORPUS_PATH =
-  "/Users/bracesproul/code/lang-chain-ai/other/anytool-private/data/trimmed_corpus.json";
+  "/Users/andreasblondeau/Documents/GitHub.nosync/AI/langtool-template/data/trimmed_corpus.json";
 
 export const HIGH_LEVEL_CATEGORY_MAPPING = {
   Data_and_Analytics: [
