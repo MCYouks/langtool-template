@@ -1,6 +1,6 @@
 // Define graph here
 
-import fs from "fs"
+import fs from "fs";
 import { StateGraph } from "@langchain/langgraph";
 import { ChatOpenAI } from "@langchain/openai";
 
@@ -24,12 +24,12 @@ export type GraphState = {
   /**
    * The relevant API categories for the query
    */
-  categories: string[] | null
+  categories: string[] | null;
 
   /**
    * The relevant APIs for the given category
    */
-  apis : DatasetSchema[] | null;
+  apis: DatasetSchema[] | null;
 
   /**
    * The most relevant API for the query
@@ -39,62 +39,66 @@ export type GraphState = {
   /**
    * Params for the API query
    */
-   params: Record<string, string> | null
+  params: Record<string, string> | null;
 
-   /**
-    * The API response
-    */
-   response: Record<string, unknown> | null
-
-
+  /**
+   * The API response
+   */
+  response: Record<string, unknown> | null;
 };
 
-
 const graphChannels = {
-  llm: { 
-    value: null
+  llm: {
+    value: null,
   },
   query: {
-    value: null
+    value: null,
   },
   categories: {
-    value: null
+    value: null,
   },
   apis: {
-    value: null
+    value: null,
   },
   bestApi: {
-    value: null
+    value: null,
   },
   params: {
-    value: null
+    value: null,
   },
   response: {
-    value: null
-  }
+    value: null,
+  },
 };
 
 /**
  * @param {GraphState} state
  */
-const verifyParams = (state: GraphState): GraphNode.HumanInTheLoop | GraphNode.ExecuteFetchRequest => {
+const verifyParams = (
+  state: GraphState
+): GraphNode.HumanInTheLoop | GraphNode.ExecuteFetchRequest => {
   throw new Error("Not implemented: " + state);
-}
+};
 
 const getApis = (state: GraphState): Partial<GraphState> => {
   const { categories } = state;
 
   if (!categories?.length) {
-    throw new Error(`No categories provided to ${GraphNode.GetApisInCategory} node.`)
+    throw new Error(
+      `No categories provided to ${GraphNode.GetApisInCategory} node.`
+    );
   }
 
-  const allData: DatasetSchema[] = JSON.parse(fs.readFileSync(TRIMMED_CORPUS_PATH, "utf8"))
+  const allData: DatasetSchema[] = JSON.parse(
+    fs.readFileSync(TRIMMED_CORPUS_PATH, "utf8")
+  );
 
-  const apis = categories.flatMap(category => allData.filter(data => data.category_name === category))
+  const apis = categories.flatMap((category) =>
+    allData.filter((data) => data.category_name === category)
+  );
 
-  return { apis }
-}
-
+  return { apis };
+};
 
 enum GraphNode {
   ExtractCategory = "extract_category",
@@ -102,7 +106,7 @@ enum GraphNode {
   SelectApi = "select_api",
   ExtractApiParamsFromQuery = "extract_api_params_from_query",
   HumanInTheLoop = "human_in_the_loop",
-  ExecuteFetchRequest = "execute_fetch_request"
+  ExecuteFetchRequest = "execute_fetch_request",
 }
 
 function createGraph() {
@@ -111,30 +115,30 @@ function createGraph() {
    */
 
   const graph = new StateGraph<GraphState>({
-    channels: graphChannels
-  })
+    channels: graphChannels,
+  });
 
   /**
    * Define nodes
    */
 
-  graph.addNode(GraphNode.ExtractCategory, extractCategory)
+  graph.addNode(GraphNode.ExtractCategory, extractCategory);
 
-  graph.addNode(GraphNode.GetApisInCategory, getApis)
+  graph.addNode(GraphNode.GetApisInCategory, getApis);
 
-  graph.addNode(GraphNode.SelectApi, selectApi)
+  graph.addNode(GraphNode.SelectApi, selectApi);
 
   graph.addNode(GraphNode.ExtractApiParamsFromQuery, (state: GraphState) => {
-    console.log("Not implemented", state)
-  })
+    console.log("Not implemented", state);
+  });
 
   graph.addNode(GraphNode.HumanInTheLoop, (state: GraphState) => {
-    console.log("Not implemented", state)
-  })
+    console.log("Not implemented", state);
+  });
 
   graph.addNode(GraphNode.ExecuteFetchRequest, (state: GraphState) => {
-    console.log("Not implemented", state)
-  })
+    console.log("Not implemented", state);
+  });
 
   /**
    * Define edges
@@ -150,17 +154,17 @@ function createGraph() {
    * Define conditional edges
    */
 
-  graph.addConditionalEdges(GraphNode.ExtractApiParamsFromQuery, verifyParams)
+  graph.addConditionalEdges(GraphNode.ExtractApiParamsFromQuery, verifyParams);
 
-  graph.addConditionalEdges(GraphNode.HumanInTheLoop, verifyParams)
+  graph.addConditionalEdges(GraphNode.HumanInTheLoop, verifyParams);
 
   /**
    * Define entry and finish point
    */
 
-  graph.setEntryPoint(GraphNode.ExtractCategory)
+  graph.setEntryPoint(GraphNode.ExtractCategory);
 
-  graph.setFinishPoint(GraphNode.ExecuteFetchRequest)
+  graph.setFinishPoint(GraphNode.ExecuteFetchRequest);
 
   /**
    * Compile the graph
@@ -168,8 +172,8 @@ function createGraph() {
 
   const app = graph.compile();
 
-  return app
-} 
+  return app;
+}
 
 const datasetQuery =
   "I'm researching WhatsApp for Business accounts. Can you check if the number 9876543210 is a WhatsApp for Business account? Also, provide the business description, website, email, business hours, address, and category if it is.";
@@ -188,12 +192,12 @@ async function main(query: string) {
 
   const llm = new ChatOpenAI({
     modelName: "gpt-4-turbo-preview",
-    temperature: 0
-  })
+    temperature: 0,
+  });
 
-  const response = await app.invoke({ llm, query })
+  const response = await app.invoke({ llm, query });
 
-  console.log(response)
+  console.log(response);
 }
 
 main(datasetQuery);

@@ -1,8 +1,13 @@
 import { StructuredTool } from "@langchain/core/tools";
+import {
+  ChatPromptTemplate,
+  HumanMessagePromptTemplate,
+  SystemMessagePromptTemplate,
+} from "@langchain/core/prompts";
 import { z } from "zod";
+
 import { GraphState } from "index.js";
 import { DatasetSchema } from "types.js";
-import { ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate } from "@langchain/core/prompts";
 
 /**
  * Given a users query, choose the API which best
@@ -35,11 +40,13 @@ export class SelectAPITool extends StructuredTool {
    */
   constructor(apis: DatasetSchema[], query: string) {
     super();
-    this.description = SelectAPITool.createDescription(apis, query)
+    this.description = SelectAPITool.createDescription(apis, query);
     this.schema = z.object({
-      api: z.enum(apis.map(api => api.api_name) as [string, ...string[]]).describe("The name of the API which best matches the query")
-    })
-    this.apis = apis
+      api: z
+        .enum(apis.map((api) => api.api_name) as [string, ...string[]])
+        .describe("The name of the API which best matches the query"),
+    });
+    this.apis = apis;
   }
 
   /**
@@ -54,23 +61,35 @@ export class SelectAPITool extends StructuredTool {
     Query: ${query}
     
     APIs:
-    ${apis.map(api => `
+    ${apis
+      .map(
+        (api) => `
       Tool name: ${api.tool_name}
       API name: ${api.api_name}
       Description: ${api.api_description} 
-      Parameters: \n${[...api.required_parameters, ...api.optional_parameters].map(param => ` - Name: ${param.name}, Description: ${param.description}`).join("\n")}`).join("\n---\n")}
-    `
+      Parameters: \n${[...api.required_parameters, ...api.optional_parameters]
+        .map(
+          (param) => ` - Name: ${param.name}, Description: ${param.description}`
+        )
+        .join("\n")}`
+      )
+      .join("\n---\n")}
+    `;
 
-    return description
+    return description;
   }
 
   async _call(input: z.infer<typeof this.schema>): Promise<string> {
-    const { api: apiName } = input
-    const bestApi = this.apis.find(api => api.api_name === apiName)
+    const { api: apiName } = input;
+    const bestApi = this.apis.find((api) => api.api_name === apiName);
     if (!bestApi) {
-      throw new Error(`API ${apiName} was not found in the list of APIs: ${this.apis.map(api => api.api_name).join(', ')}`)
+      throw new Error(
+        `API ${apiName} was not found in the list of APIs: ${this.apis
+          .map((api) => api.api_name)
+          .join(", ")}`
+      );
     }
-    return JSON.stringify(bestApi)
+    return JSON.stringify(bestApi);
   }
 }
 
@@ -78,10 +97,12 @@ export class SelectAPITool extends StructuredTool {
  * TODO: implement
  * @param {GraphState} state
  */
-export async function selectApi(state: GraphState): Promise<Partial<GraphState>> {
+export async function selectApi(
+  state: GraphState
+): Promise<Partial<GraphState>> {
   const { llm, query, apis } = state;
 
-  if (!apis?.length) throw new Error(`No APIs passed to the select_api node`)
+  if (!apis?.length) throw new Error(`No APIs passed to the select_api node`);
 
   const prompt = ChatPromptTemplate.fromMessages([
     SystemMessagePromptTemplate.fromTemplate(`
@@ -96,25 +117,34 @@ export async function selectApi(state: GraphState): Promise<Partial<GraphState>>
       <apis>
       {apis}
       </apis>
-    `)
-  ])
+    `),
+  ]);
 
-  const tool = new SelectAPITool(apis, query)
+  const tool = new SelectAPITool(apis, query);
 
   const modelWithStructuredOutput = llm.withStructuredOutput(tool.schema);
 
-  const chain = prompt.pipe(modelWithStructuredOutput).pipe(tool)
+  const chain = prompt.pipe(modelWithStructuredOutput).pipe(tool);
 
   const response = await chain.invoke({
     query,
-    apis: apis.map(api => `
+    apis: apis
+      .map(
+        (api) => `
       Tool name: ${api.tool_name}
       API name: ${api.api_name}
       Description: ${api.api_description} 
-      Parameters: \n${[...api.required_parameters, ...api.optional_parameters].map(param => `  - Name: ${param.name}, Description: ${param.description}`).join("\n")}`).join("\n---\n")
-  })
+      Parameters: \n${[...api.required_parameters, ...api.optional_parameters]
+        .map(
+          (param) =>
+            `  - Name: ${param.name}, Description: ${param.description}`
+        )
+        .join("\n")}`
+      )
+      .join("\n---\n"),
+  });
 
-  const bestApi: DatasetSchema = JSON.parse(response)
+  const bestApi: DatasetSchema = JSON.parse(response);
 
-  return { bestApi }
+  return { bestApi };
 }
