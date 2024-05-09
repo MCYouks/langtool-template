@@ -9,6 +9,9 @@ import { TRIMMED_CORPUS_PATH } from "constants.js";
 
 import { extractCategory } from "tools/extract_category.js";
 import { selectApi } from "tools/select_api.js";
+import { extractParameters } from "tools/extract_parameters.js";
+import { requestParameters } from "tools/request_parameters.js";
+import { findMissingParams } from "utils.js";
 
 export type GraphState = {
   /**
@@ -77,7 +80,19 @@ const graphChannels = {
 const verifyParams = (
   state: GraphState
 ): GraphNode.HumanInTheLoop | GraphNode.ExecuteFetchRequest => {
-  throw new Error("Not implemented: " + state);
+  const { bestApi, params } = state;
+
+  if (!bestApi) throw new Error("No best API found");
+
+  if (!params) return GraphNode.HumanInTheLoop;
+
+  const requiredParams = bestApi.required_parameters.map((param) => param.name);
+  const extractedParams = Object.keys(params);
+
+  const missingParams = findMissingParams(requiredParams, extractedParams);
+
+  if (missingParams.length) return GraphNode.HumanInTheLoop;
+  else return GraphNode.ExecuteFetchRequest;
 };
 
 const getApis = (state: GraphState): Partial<GraphState> => {
@@ -123,19 +138,10 @@ function createGraph() {
    */
 
   graph.addNode(GraphNode.ExtractCategory, extractCategory);
-
   graph.addNode(GraphNode.GetApisInCategory, getApis);
-
   graph.addNode(GraphNode.SelectApi, selectApi);
-
-  graph.addNode(GraphNode.ExtractApiParamsFromQuery, (state: GraphState) => {
-    console.log("Not implemented", state);
-  });
-
-  graph.addNode(GraphNode.HumanInTheLoop, (state: GraphState) => {
-    console.log("Not implemented", state);
-  });
-
+  graph.addNode(GraphNode.ExtractApiParamsFromQuery, extractParameters);
+  graph.addNode(GraphNode.HumanInTheLoop, requestParameters);
   graph.addNode(GraphNode.ExecuteFetchRequest, (state: GraphState) => {
     console.log("Not implemented", state);
   });
@@ -145,9 +151,7 @@ function createGraph() {
    */
 
   graph.addEdge(GraphNode.ExtractCategory, GraphNode.GetApisInCategory);
-
   graph.addEdge(GraphNode.GetApisInCategory, GraphNode.SelectApi);
-
   graph.addEdge(GraphNode.SelectApi, GraphNode.ExtractApiParamsFromQuery);
 
   /**
@@ -155,7 +159,6 @@ function createGraph() {
    */
 
   graph.addConditionalEdges(GraphNode.ExtractApiParamsFromQuery, verifyParams);
-
   graph.addConditionalEdges(GraphNode.HumanInTheLoop, verifyParams);
 
   /**
@@ -163,7 +166,6 @@ function createGraph() {
    */
 
   graph.setEntryPoint(GraphNode.ExtractCategory);
-
   graph.setFinishPoint(GraphNode.ExecuteFetchRequest);
 
   /**
